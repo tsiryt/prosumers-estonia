@@ -17,4 +17,5 @@ Download the data from the Kaggle API :
 # install kaggle API
 pip install kaggle
 kaggle competitions download predict-energy-behavior-of-prosumers
+unzip predict-energy-behavior-of-prosumers -d data
 ```
