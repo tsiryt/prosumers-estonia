@@ -31,8 +31,14 @@ dai_split<- initial_split(train,prop=0.8)
 train_dai<-training(dai_split)
 test_dai<-testing(dai_split)
 
+numeric_train_dai <- train_dai %>% 
+  select(where(is.numeric))
+
+numeric_test_dai <- test_dai %>% 
+  select(where(is.numeric))
+
 #data processing : remove variables that contain only a single value
-rec <- recipe(target ~ ., data = train_dai) %>%
+rec <- recipe(target ~ ., data = numeric_train_dai) %>%
   step_zv()
 
 # model
@@ -47,5 +53,12 @@ wf <- workflow() %>%
 
 # modeling
 model <- wf %>% 
-  fit(data = train_dai) %>% 
+  fit(data = numeric_train_dai) %>% 
   withr::with_seed(7)
+
+#check missing values too
+inspect_na(numeric_train_dai) %>% show_plot()
+# summarize numerical columns
+inspect_num(numeric_train_dai) %>% show_plot()
+## correlation between columns
+inspect_cor(numeric_train_dai) %>% show_plot()
