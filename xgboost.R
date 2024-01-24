@@ -76,10 +76,11 @@ test_pred_class <-
 info_baseline <-
   test_pred_class %>%
   mae(truth = target, estimate = .pred)
+# 1 mae     standard        250. 
 info_baseline
 
 info_baseline <-
   test_pred_class %>%
   rmse(truth = target, estimate = .pred)
-
+# 1 rmse    standard        830.
 info_baseline
