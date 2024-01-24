@@ -35,17 +35,19 @@ numeric_train_dai <- train_dai %>%
   select(where(is.numeric)) %>%
   filter(!prediction_unit_id %in% id_na_in_train)
 
+numeric_train_dai <- numeric_train_dai[complete.cases(numeric_train_dai), ]
+
 numeric_test_dai <- test_dai %>% 
   select(where(is.numeric))
 
 #data processing : remove variables that contain only a single value
-rec <- recipe(target ~ ., data = numeric_train_dai) %>%
+rec <- recipe(target ~ ., data = numeric_train_dai ) %>%
   step_zv()
 
 # model
 rule <- boost_tree(learn_rate = 0.01, tree_depth = 1000) %>%
-  set_engine('xgboost') %>%
-  set_mode('regression')
+  set_engine("xgboost") %>%
+  set_mode("regression")
 
 # ML workflow
 wf <- workflow() %>% 
@@ -54,7 +56,7 @@ wf <- workflow() %>%
 
 # modeling
 model <- wf %>% 
-  fit(data = numeric_train_dai) %>% 
+  fit(data = numeric_train_dai[complete.cases(numeric_train_dai), ]) %>% 
   withr::with_seed(7)
 
 #check missing values too
