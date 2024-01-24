@@ -32,7 +32,8 @@ train_dai<-training(dai_split)
 test_dai<-testing(dai_split)
 
 numeric_train_dai <- train_dai %>% 
-  select(where(is.numeric))
+  select(where(is.numeric)) %>%
+  filter(!prediction_unit_id %in% id_na_in_train)
 
 numeric_test_dai <- test_dai %>% 
   select(where(is.numeric))
