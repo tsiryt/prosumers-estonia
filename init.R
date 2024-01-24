@@ -34,5 +34,9 @@ id_na_in_train <- train %>%
   pull(prediction_unit_id) %>%
   unique()
 
-#test inpsectdf
-inspectdf::inspect_na(train) %>% inspectdf::show_plot()
+#check missing values too
+inspect_na(train) %>% show_plot()
+# summarize numerical columns
+inspect_num(train) %>% show_plot()
+## correlation between columns
+inspect_cor(train) %>% show_plot()
