@@ -41,10 +41,10 @@ numeric_test_dai <- test_dai %>%
   select(where(is.numeric))
 
 #data processing : remove variables that contain only a single value
-rec <- recipe(target ~ ., data = numeric_train_dai ) %>%
+rec <- recipe(target ~ ., data = numeric_train_dai) %>%
   step_zv()
 
-# model
+# model default 15 trees
 rule <- boost_tree(learn_rate = 0.01, tree_depth = 1000) %>%
   set_engine("xgboost") %>%
   set_mode("regression")
@@ -57,11 +57,29 @@ wf <- workflow() %>%
 # modeling
 model <- wf %>% 
   fit(data = numeric_train_dai[complete.cases(numeric_train_dai), ]) %>% 
-  withr::with_seed(7)
+  withr::with_seed(7, .)
 
-#check missing values too
-inspect_na(numeric_train_dai) %>% show_plot()
-# summarize numerical columns
-inspect_num(numeric_train_dai) %>% show_plot()
-## correlation between columns
-inspect_cor(numeric_train_dai) %>% show_plot()
+# #check missing values too
+# inspect_na(numeric_train_dai) %>% show_plot()
+# # summarize numerical columns
+# inspect_num(numeric_train_dai) %>% show_plot()
+# ## correlation between columns
+# inspect_cor(numeric_train_dai) %>% show_plot()
+
+test_pred_class <-
+  bind_cols(
+    test_dai,
+    predict(model, new_data = test_dai, type = "numeric")
+  ) %>%
+  select(target, .pred, everything())
+
+info_baseline <-
+  test_pred_class %>%
+  mae(truth = target, estimate = .pred)
+info_baseline
+
+info_baseline <-
+  test_pred_class %>%
+  rmse(truth = target, estimate = .pred)
+
+info_baseline
