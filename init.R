@@ -15,7 +15,7 @@ id_to_county <- fromJSON(here::here("data", "county_id_to_name_map.json")) %>%
 
 # mapping prediction unit id
 date_all_prod_units <- train %>%
-  filter(is_consumption == 1) %>%
+  filter(is_consumption == 1) %>% #consumers
   group_by(datetime) %>%
   summarise(count = n()) %>%
   filter(count == max(count)) %>%
@@ -33,3 +33,6 @@ id_na_in_train <- train %>%
   filter(count < max(count)) %>%
   pull(prediction_unit_id) %>%
   unique()
+
+#test inpsectdf
+inspectdf::inspect_na(train) %>% inspectdf::show_plot()
