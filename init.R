@@ -29,7 +29,7 @@ ref_prediction_unit_id <- train %>%
   select(prediction_unit_id, county, is_business, product_type)
 
 # IDs with missing train values
-id_na_in_train <- train %>%
+id_missing_values_in_train <- train %>%
   group_by(prediction_unit_id, is_consumption) %>%
   summarise(count = n()) %>%
   ungroup() %>%
