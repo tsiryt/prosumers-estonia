@@ -1,17 +1,8 @@
 library(here)
 here::i_am("model.R")
 
+source(here::here("load_dataset.R"))
 source(here::here("init.R"))
-client <- read_delim(here::here("data", "client.csv"))
-train <- read_delim(here::here("data", "train.csv"))
-gas_prices <- read_delim(here::here("data", "gas_prices.csv"))
-electricity_prices <- read_delim(here::here("data", "electricity_prices.csv"))
-forecast_weather <- read_delim(here::here("data", "forecast_weather.csv"))
-id_to_county <- fromJSON(here::here("data", "county_id_to_name_map.json")) %>%
-  unlist() %>%
-  tibble::enframe() %>%
-  rename(id = name, county = value)
-
 
 #Convert date and time data into variables
 library(lubridate)

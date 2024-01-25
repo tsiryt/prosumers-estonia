@@ -2,16 +2,7 @@ library(here)
 here::i_am("init.R")
 
 source(here::here("R", "libraries.R"))
-
-client <- read_delim(here::here("data", "client.csv"))
-train <- read_delim(here::here("data", "train.csv"))
-gas_prices <- read_delim(here::here("data", "gas_prices.csv"))
-electricity_prices <- read_delim(here::here("data", "electricity_prices.csv"))
-forecast_weather <- read_delim(here::here("data", "forecast_weather.csv"))
-id_to_county <- fromJSON(here::here("data", "county_id_to_name_map.json")) %>%
-  unlist() %>%
-  tibble::enframe() %>%
-  rename(id = name, county = value)
+source(here::here("load_dataset.R"))
 
 # mapping prediction unit id
 date_all_prod_units <- train %>%
@@ -33,10 +24,3 @@ id_na_in_train <- train %>%
   filter(count < max(count)) %>%
   pull(prediction_unit_id) %>%
   unique()
-
-#check missing values too
-inspect_na(train) %>% show_plot()
-# summarize numerical columns
-inspect_num(train) %>% show_plot()
-## correlation between columns
-inspect_cor(train) %>% show_plot()
