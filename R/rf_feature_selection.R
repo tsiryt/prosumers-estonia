@@ -1,5 +1,8 @@
 ### Random Forest feature selection ###
-ntree <- 100
+here::i_am("R/rf_feature_selection.R")
+source(here::here("init.R"))
+
+ntree <- 400
 
 history_weather_avg <- history_weather_county %>%
   group_by(datetime) %>%
@@ -32,16 +35,56 @@ train_weather <- train %>%
     -county
   )
 
+train_weather_prod <- train_weather %>%
+  filter(is_consumption == 0)
+train_weather_cons <- train_weather %>%
+  filter(is_consumption == 1)
+
+
 set.seed(4543)
 tic("random forest fitting : consumption")
-rf_fit <- randomForest(
+rf_fit_cons <- randomForest(
   target ~ .,
-  data = train_weather,
+  data = train_weather_cons,
   ntree = ntree,
-  keep.forest = FALSE,
+  keep.forest = TRUE,
   importance = TRUE
 )
 toc()
 
-# scale problem ?
-rf_fit$importance
+tic("random forest fitting : production")
+rf_fit_prod <- randomForest(
+  target ~ .,
+  data = train_weather_prod,
+  ntree = ntree,
+  keep.forest = TRUE,
+  importance = TRUE
+)
+toc()
+
+### Visualize variable importance ----------------------------------------------
+
+# Get variable importance from the model fit
+ImpData <- rf_fit_prod$importance %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "Var.Names") %>%
+  as_tibble()
+
+ggplot(ImpData, aes(x = Var.Names, y = `%IncMSE`)) +
+  geom_segment(
+    aes(x = Var.Names, xend = Var.Names, y = 0, yend = `%IncMSE`),
+    color = "skyblue"
+  ) +
+  geom_point(aes(size = IncNodePurity), color = "blue", alpha = 0.6) +
+  theme_light() +
+  coord_flip() +
+  theme(
+    legend.position = "bottom",
+    panel.grid.major.y = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# Partial effects
+df_train <- data.frame(train_weather)
+partialPlot(rf_fit_prod, df_train, shortwave_radiation)
