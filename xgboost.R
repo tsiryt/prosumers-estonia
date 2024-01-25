@@ -1,24 +1,25 @@
-library(here)
 here::i_am("model.R")
 
 source(here::here("load_dataset.R"))
 source(here::here("init.R"))
 
 #Convert date and time data into variables
-library(lubridate)
 # Convert date and time column to POSIXct type
-train$datetime <- ymd_hms(train$datetime)
 # Calculate by column
-train$year <- year(train$datetime)
-train$month <- month(train$datetime)
-train$day <- day(train$datetime)
-train$week_of_month <- as.character(week(floor_date(train$datetime, unit = "week")))
-train$weekday <- weekdays(train$datetime)
+process_TRAIN <- process_TRAIN(){
+  TRAIN$datetime <- ymd_hms(TRAIN$datetime)
+  TRAIN$year <- year(TRAIN$datetime)
+  TRAIN$month <- month(TRAIN$datetime)
+  TRAIN$day <- day(TRAIN$datetime)
+  TRAIN$week_of_month <- as.character(week(floor_date(TRAIN$datetime, unit = "week")))
+  TRAIN$weekday <- weekdays(TRAIN$datetime)
+}
+
 
 
 set.seed(42)
 #train test split
-dai_split<- initial_split(train,prop=0.8)
+dai_split<- initial_split(TRAIN,prop=0.8)
 train_dai<-training(dai_split)
 test_dai<-testing(dai_split)
 

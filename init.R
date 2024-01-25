@@ -1,4 +1,3 @@
-library(here)
 here::i_am("init.R")
 
 source(here::here("R", "libraries.R"))
