@@ -1,12 +1,10 @@
-here::i_am("model.R")
-
 source(here::here("load_dataset.R"))
 source(here::here("init.R"))
 
 #Convert date and time data into variables
 # Convert date and time column to POSIXct type
 # Calculate by column
-process_TRAIN <- process_TRAIN(){
+process_TRAIN <- function(){
   TRAIN$datetime <- ymd_hms(TRAIN$datetime)
   TRAIN$year <- year(TRAIN$datetime)
   TRAIN$month <- month(TRAIN$datetime)
@@ -15,64 +13,69 @@ process_TRAIN <- process_TRAIN(){
   TRAIN$weekday <- weekdays(TRAIN$datetime)
 }
 
+split_TRAIN <- function(){
+  #train test split
+  split<- initial_split(TRAIN,prop=0.8)
+  train<-training(split)
+  test<-testing(split)
 
+  train <- train %>% 
+    select(where(is.numeric)) %>%
+    filter(!prediction_unit_id %in% id_na_in_train)
+
+  train <- train[complete.cases(train), ]
+
+  test <- test %>% 
+    select(where(is.numeric))
+  # store result in a named list
+  numeric_split <- list(train, test)
+  names(numeric_split) <- c("train", "test")
+
+  return(numeric_split)
+}
+
+get_model_workflow <- function(numeric_split){
+  #data processing : remove variables that contain only a single value
+  rec <- recipe(target ~ ., data = numeric_split$train) %>%
+    step_zv()
+
+  # model default 15 trees
+  rule <- boost_tree(learn_rate = 0.01, tree_depth = 100, trees = 2) %>%
+    set_engine("xgboost") %>%
+    set_mode("regression")
+
+  # ML workflow
+  wf <- workflow() %>% 
+    add_model(rule) %>% 
+    add_recipe(rec)
+
+  return(wf)
+}
+
+get_baseline <- function(metric, test_pred_class){
+  info_baseline <- test_pred_class %>%
+  metric(truth = target, estimate = .pred)
+  return(info_baseline)
+}
 
 set.seed(42)
-#train test split
-dai_split<- initial_split(TRAIN,prop=0.8)
-train_dai<-training(dai_split)
-test_dai<-testing(dai_split)
-
-numeric_train_dai <- train_dai %>% 
-  select(where(is.numeric)) %>%
-  filter(!prediction_unit_id %in% id_na_in_train)
-
-numeric_train_dai <- numeric_train_dai[complete.cases(numeric_train_dai), ]
-
-numeric_test_dai <- test_dai %>% 
-  select(where(is.numeric))
-
-#data processing : remove variables that contain only a single value
-rec <- recipe(target ~ ., data = numeric_train_dai) %>%
-  step_zv()
-
-# model default 15 trees
-rule <- boost_tree(learn_rate = 0.01, tree_depth = 1000) %>%
-  set_engine("xgboost") %>%
-  set_mode("regression")
-
-# ML workflow
-wf <- workflow() %>% 
-  add_model(rule) %>% 
-  add_recipe(rec)
-
+process_TRAIN()
+numeric_split <- split_TRAIN()
+wf <- get_model_workflow(numeric_split)
 # modeling
 model <- wf %>% 
-  fit(data = numeric_train_dai[complete.cases(numeric_train_dai), ]) %>% 
+  fit(data = numeric_split$train[complete.cases(numeric_split$train), ]) %>% 
   withr::with_seed(7, .)
-
-# #check missing values too
-# inspect_na(numeric_train_dai) %>% show_plot()
-# # summarize numerical columns
-# inspect_num(numeric_train_dai) %>% show_plot()
-# ## correlation between columns
-# inspect_cor(numeric_train_dai) %>% show_plot()
-
+# predictions
 test_pred_class <-
   bind_cols(
-    test_dai,
-    predict(model, new_data = test_dai, type = "numeric")
+    numeric_split$test,
+    predict(model, new_data = numeric_split$test, type = "numeric")
   ) %>%
   select(target, .pred, everything())
+get_baseline(yardstick::mae, test_pred_class)
+get_baseline(yardstick::rmse, test_pred_class)
 
-info_baseline <-
-  test_pred_class %>%
-  mae(truth = target, estimate = .pred)
+# results for default 15 trees
 # 1 mae     standard        250. 
-info_baseline
-
-info_baseline <-
-  test_pred_class %>%
-  rmse(truth = target, estimate = .pred)
 # 1 rmse    standard        830.
-info_baseline
