@@ -1,5 +1,10 @@
-source(here::here("load_dataset.R"))
-source(here::here("init.R"))
+if (!exists("ID_TO_COUNTY")){
+  source(here::here("load_dataset.R"))
+}
+if (!exists("history_weather_county")){
+  source(here::here("init.R"))
+}
+
 
 #Convert date and time data into variables
 # Convert date and time column to POSIXct type

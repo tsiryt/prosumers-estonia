@@ -1,6 +1,8 @@
 ### Random Forest feature selection ###
 # here::i_am("R/rf_feature_selection.R")
-source(here::here("init.R"))
+if (!exists("history_weather_county")){
+  source(here::here("init.R"))
+}
 
 ntree <- 400
 
