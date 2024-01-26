@@ -1,5 +1,5 @@
 ### Random Forest feature selection ###
-here::i_am("R/rf_feature_selection.R")
+# here::i_am("R/rf_feature_selection.R")
 source(here::here("init.R"))
 
 ntree <- 400
@@ -8,7 +8,7 @@ history_weather_avg <- history_weather_county %>%
   group_by(datetime) %>%
   summarise(across(everything(), ~ mean(., na.rm = TRUE))) %>%
   select(-county)
-train_weather <- train %>%
+train_weather <- TRAIN %>%
   filter(!prediction_unit_id %in% id_missing_values_in_train) %>%
   group_by(is_consumption, prediction_unit_id) %>%
   mutate(
