@@ -73,3 +73,5 @@ all_workflows <-
 
 rank_results(all_workflows, rank_metric = "rmse")
 autoplot(all_workflows, metric = "rmse")
+
+test_predictions <- predict(all_workflows$formula_xgboost, new_data = test_data)
