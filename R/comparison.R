@@ -1,4 +1,5 @@
 here::i_am("R/comparison.R")
+# source(here::here("R", "graphics.R"))
 
 if (!exists("ID_TO_COUNTY")){
   source(here::here("R", "load_dataset.R"))
@@ -31,8 +32,8 @@ split_TRAIN <- function(){
 
   train <- train[complete.cases(train), ]
 
-  test <- test %>% 
-    select(where(is.numeric))
+  test <- test %>%
+    mutate(target = na.approx(target))
   # store result in a named list
   numeric_split <- list(train, test)
   names(numeric_split) <- c("train", "test")
@@ -72,10 +73,38 @@ all_workflows <-
   # Specifying arguments here adds to any previously set with `option_add()`:
   workflow_map(resamples = train_resamples, grid = 20, verbose = TRUE)
 
-# all_workflows <- all_workflows %>%
-#     filter(wflow_id != "formula_random_forest")
-
+# compare our workflows
 rank_results(all_workflows, rank_metric = "rmse")
 autoplot(all_workflows, metric = "rmse")
 
-test_predictions <- predict(all_workflows$formula_xgboost, new_data = test_data)
+# supposing xgboost were the best
+chosen_workflow <- all_workflows %>%
+  extract_workflow("formula_xgboost")
+best_rmse <- all_workflows %>%
+  extract_workflow_set_result("formula_xgboost") %>%
+  select_best(metric = "rmse")
+chosen_fit <- chosen_workflow %>%
+  finalize_workflow(best_rmse) %>%
+  fit(train_data)
+
+test <- augment(chosen_fit, test_data) %>%
+  select(
+    datetime,
+    county,
+    is_business,
+    product_type,
+    is_consumption,
+    target,
+    .pred
+  ) %>%
+  rename(prev = `.pred`) %>%
+  mutate(
+    across(c("county", "is_business", "product_type", "is_consumption"),
+    ~ as.factor(.))
+  ) %>%
+  pivot_longer(
+    names_to = "type",
+    values_to = "puis_MW",
+    cols = c("target", "prev")
+  )
+
