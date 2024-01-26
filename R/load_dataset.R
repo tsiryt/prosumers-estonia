@@ -1,6 +1,6 @@
 # global variables
 
-here::i_am("load_dataset.R")
+here::i_am("R/load_dataset.R")
 
 CLIENT <- read_delim(here::here("data", "client.csv"))
 TRAIN <- read_delim(here::here("data", "train.csv"))

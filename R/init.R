@@ -1,8 +1,8 @@
-# here::i_am("init.R")
+here::i_am("R/init.R")
 
 source(here::here("R", "libraries.R"))
 if (!exists("ID_TO_COUNTY")){
-  source(here::here("load_dataset.R"))
+  source(here::here("R", "load_dataset.R"))
 }
 
 # mapping prediction unit id

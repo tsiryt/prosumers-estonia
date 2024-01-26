@@ -1,8 +1,10 @@
+here::i_am("R/xgboost.R")
+source(here::here("R", "libraries.R"))
 if (!exists("ID_TO_COUNTY")){
-  source(here::here("load_dataset.R"))
+  source(here::here("R", "load_dataset.R"))
 }
 if (!exists("history_weather_county")){
-  source(here::here("init.R"))
+  source(here::here("R", "init.R"))
 }
 
 

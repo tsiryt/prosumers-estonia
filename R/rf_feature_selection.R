@@ -1,5 +1,5 @@
 ### Random Forest feature selection ###
-# here::i_am("R/rf_feature_selection.R")
+here::i_am("R/rf_feature_selection.R")
 if (!exists("history_weather_county")){
   source(here::here("init.R"))
 }
