@@ -68,5 +68,8 @@ all_workflows <-
   # Specifying arguments here adds to any previously set with `option_add()`:
   workflow_map(resamples = train_resamples, grid = 20, verbose = TRUE)
 
+# all_workflows <- all_workflows %>%
+#     filter(wflow_id != "formula_random_forest")
+
 rank_results(all_workflows, rank_metric = "rmse")
 autoplot(all_workflows, metric = "rmse")
