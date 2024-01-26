@@ -1,5 +1,5 @@
 here::i_am("R/comparison.R")
-# source(here::here("R", "graphics.R"))
+source(here::here("R", "graphics.R"))
 
 if (!exists("ID_TO_COUNTY")){
   source(here::here("R", "load_dataset.R"))
@@ -108,3 +108,7 @@ test <- augment(chosen_fit, test_data) %>%
     cols = c("target", "prev")
   )
 
+
+test %>%
+  filter(datetime >= ymd("2022-04-01"), datetime <= ymd("2022-04-30")) %>%
+  draw_target_vs_prev()
