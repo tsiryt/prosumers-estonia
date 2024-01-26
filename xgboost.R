@@ -26,7 +26,7 @@ split_TRAIN <- function(){
 
   train <- train %>% 
     select(where(is.numeric)) %>%
-    filter(!prediction_unit_id %in% id_na_in_train)
+    filter(!prediction_unit_id %in% id_missing_values_in_train)
 
   train <- train[complete.cases(train), ]
 
@@ -45,7 +45,7 @@ get_model_workflow <- function(numeric_split){
     step_zv()
 
   # model default 15 trees
-  rule <- boost_tree(learn_rate = 0.01, tree_depth = 100, trees = 2) %>%
+  rule <- boost_tree(learn_rate = 0.01, tree_depth = 1000, trees = 15, stop_iter = 3) %>%
     set_engine("xgboost") %>%
     set_mode("regression")
 
