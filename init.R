@@ -25,14 +25,14 @@ id_missing_values_in_train <- TRAIN %>%
   unique()
 
 # weather data by county
-history_weather_county <- weather_station_to_county_mapping %>%
+history_weather_county <- WEATHER_STATION_TO_COUNTY_MAPPING %>%
   filter(!is.na(county)) %>%
   inner_join(
-    historical_weather,
+    HISTORICAL_WEATHER,
     by = c("latitude", "longitude"), multiple = "all"
   ) %>%
   group_by(county, datetime) %>%
   summarise(across(where(is.numeric), mean)) %>%
   select(-longitude, -latitude)
-
-rm(list = c("historical_weather"))
+# why rm ?
+# rm(list = c("historical_weather"))
