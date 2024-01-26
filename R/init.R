@@ -1,7 +1,9 @@
 # here::i_am("init.R")
 
 source(here::here("R", "libraries.R"))
-source(here::here("load_dataset.R"))
+if (!exists("ID_TO_COUNTY")){
+  source(here::here("load_dataset.R"))
+}
 
 # mapping prediction unit id
 date_all_prod_units <- TRAIN %>%
