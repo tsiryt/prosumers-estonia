@@ -40,6 +40,8 @@ split_TRAIN <- function(){
   return(numeric_split)
 }
 
+process_TRAIN()
+numeric_split <- split_TRAIN()
 
 train_data <- numeric_split$train
 test_data <- numeric_split$test
