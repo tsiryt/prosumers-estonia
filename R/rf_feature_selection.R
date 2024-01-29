@@ -6,9 +6,9 @@ if (!exists("history_weather_county")){
 
 ntree <- 400
 # splitting train & test sets
-datetime_split <- ymd_hms("2023-01-24 00:00:00")
+datetime_split <<- ymd_hms("2023-01-24 00:00:00")
 
-history_weather_avg <- history_weather_county %>%
+history_weather_avg <<- history_weather_county %>%
   group_by(datetime) %>%
   summarise(across(everything(), ~ mean(., na.rm = TRUE))) %>%
   select(-county)
