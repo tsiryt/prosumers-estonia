@@ -1,6 +1,6 @@
 here::i_am("R/comparison.R")
 source(here::here("R", "graphics.R"))
-
+source(here::here("R", "data_processing.R"))
 if (!exists("ID_TO_COUNTY")){
   source(here::here("R", "load_dataset.R"))
 }
@@ -71,7 +71,7 @@ all_workflows <-
 all_workflows <- 
   all_workflows %>% 
   # Specifying arguments here adds to any previously set with `option_add()`:
-  workflow_map(resamples = train_resamples, grid = 20, verbose = TRUE)
+  workflow_map(resamples = train_resamples, grid = 2, verbose = TRUE)
 
 # compare our workflows
 rank_results(all_workflows, rank_metric = "rmse")
