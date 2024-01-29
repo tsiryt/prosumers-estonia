@@ -1,5 +1,5 @@
 # global variables
-
+source(here::here("R", "libraries.R"))
 here::i_am("R/load_dataset.R")
 
 CLIENT <- read_delim(here::here("data", "client.csv"))
