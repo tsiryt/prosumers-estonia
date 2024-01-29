@@ -1,6 +1,7 @@
 here::i_am("R/comparison.R")
 source(here::here("R", "graphics.R"))
-source(here::here("R", "data_processing.R"))
+source(here::here("R", "libraries.R"))
+
 if (!exists("ID_TO_COUNTY")){
   source(here::here("R", "load_dataset.R"))
 }
@@ -51,16 +52,12 @@ set.seed(42)
 train_resamples <- bootstraps(train_data)
 
 model_specs <- list(
-  linear_reg = linear_reg(),
-  decision_tree = decision_tree(),
-  random_forest = rand_forest(),
-  xgboost = boost_tree()
-)
-
-model_specs <- lapply(model_specs, function(model) {
-  model %>% set_mode("regression")
-})
-
+    linear_reg = linear_reg(),
+    decision_tree = decision_tree(),
+    # random_forest = rand_forest(),
+    xgboost = boost_tree()
+  ) %>%
+  map(function(model) set_mode(model, "regression"))
 
 all_workflows <- 
   workflow_set(
