@@ -1,54 +1,12 @@
-# GAM par heure
+# GAM, hourly
 here::i_am("R/gam.R")
 source(here::here("R", "graphics.R"))
 if (!exists("history_weather_county")){
   source(here::here("R", "init.R"))
 }
 
+# inspect one model in particular
 my_hour <- 12
-
-train_weather_price <- TRAIN %>%
-  filter(
-    !prediction_unit_id %in% id_missing_values_in_train,
-    datetime <= datetime_split
-  ) %>%
-  group_by(is_consumption, prediction_unit_id) %>%
-  mutate(
-    # interpolate NAs at daylight saving time
-    target = na.approx(target),
-    is_consumption = as.factor(is_consumption),
-    is_business = as.factor(is_business),
-    product_type = as.factor(product_type),
-    hour = hour(datetime),
-    day_of_week = as.factor(wday(datetime)),
-    is_winter = as.factor(if_else(month(datetime) %in% 3:10, 0, 1))
-  ) %>%
-  ungroup() %>%
-  group_by(datetime, is_consumption, is_business, is_winter, day_of_week) %>%
-  summarise(across(where(is.numeric), ~ mean(., na.rm = TRUE))) %>%
-  inner_join(
-    history_weather_avg,
-    by = c("datetime"),
-    multiple = "all"
-  ) %>%
-  inner_join(
-    ELECTRICITY_PRICES,
-    by = c("datetime" = "forecast_date"),
-    multiple = "all"
-  ) %>%
-  ungroup() %>%
-  select(
-    -starts_with("data_block"),
-    -row_id,
-    -prediction_unit_id,
-    # -datetime,
-    -county
-  )
-
-train_weather_price_prod <- train_weather_price %>%
-  filter(is_consumption == 0)
-train_weather_price_cons <- train_weather_price %>%
-  filter(is_consumption == 1)
 
 spec <-
   gen_additive_mod(select_features = FALSE) %>%
@@ -73,7 +31,10 @@ gam_predictors <- c(
   "winddirection_10m",
   "windspeed_10m",
   "is_winter",
-  "day_of_week"
+  "day_of_week",
+  "eic_count",
+  "installed_capacity",
+  "target_lag_7"
 )
 
 wf <- workflow() %>%
@@ -81,14 +42,18 @@ wf <- workflow() %>%
   add_model(
     spec,
     formula = target ~ s(temperature) +
+    s(target_lag_7) +
     euros_per_mwh +
     # surface_pressure +
     # shortwave_radiation +
     direct_solar_radiation +
-    s(cloudcover_total) +
+    cloudcover_total +
+    installed_capacity +
+    eic_count +
     s(dewpoint) +
     is_winter +
-    day_of_week
+    day_of_week +
+    is_business:day_of_week
   )
 
 # fit a model on nested data. Call with purrr::map
@@ -108,8 +73,7 @@ predict_hourly <- function(model, df) {
   return(prev$.pred)
 }
 
-fit_cons <- train_weather_price_cons %>%
-  filter(is_business == 0) %>%
+fit_cons <- train_features_cons %>%
   group_by(hour) %>%
   nest() %>%
   mutate(fit = map(data, fit_hourly)) %>%
@@ -139,12 +103,13 @@ model[[1]] %>%
   gam.check()
 
 
-train_weather_price_cons %>%
+train_features_cons %>%
   filter(hour == my_hour) %>%
-  ggplot(aes(x = euros_per_mwh, y = target)) +
-  geom_point()
+  ggplot(aes(x = eic_count, y = target)) +
+  geom_point() +
+  facet_grid(cols = vars(is_business))
 
-train_weather_price_cons %>%
+train_features_cons %>%
   mutate(weird = if_else(target <= 55, "weird", "normal")) %>%
   filter(hour == my_hour, is_business == 0) %>%
   select(datetime, target, weird) %>%
@@ -173,49 +138,17 @@ train_weather_price_cons %>%
 
 
 ### PREDICT ### -------------
-test_weather_price_cons <- TRAIN %>%
-  filter(
-    !prediction_unit_id %in% id_missing_values_in_train,
-    # for testing purposes
-    is_business == 0,
-    is_consumption == 1,
-    datetime >= datetime_split
-  ) %>%
-  group_by(is_consumption, prediction_unit_id) %>%
-  mutate(
-    # interpolate NAs at daylight saving time
-    target = na.approx(target),
-    is_consumption = as.factor(is_consumption),
-    is_business = as.factor(is_business),
-    product_type = as.factor(product_type),
-    hour = hour(datetime),
-    day_of_week = as.factor(wday(datetime)),
-    is_winter = as.factor(if_else(month(datetime) %in% 3:10, 0, 1))
-  ) %>%
-  ungroup() %>%
-  group_by(datetime, hour, is_consumption, is_business, is_winter, day_of_week) %>%
-  summarise(across(where(is.numeric), ~ mean(., na.rm = TRUE))) %>%
-  inner_join(
-    history_weather_avg,
-    by = c("datetime"),
-    multiple = "all"
-  ) %>%
-  ungroup() %>%
-  inner_join(
-    ELECTRICITY_PRICES,
-    by = c("datetime" = "forecast_date"),
-    multiple = "all"
-  ) %>%
-  ungroup() %>%
+test <- test_features %>%
+  filter(is_consumption == 1) %>%
   select(datetime, hour, is_business, target, all_of(gam_predictors)) %>%
   group_by(hour) %>%
   nest()
 
-prevision <- test_weather_price_cons %>%
+prevision <- test %>%
   inner_join(fit_cons, by = "hour") %>%
   mutate(.pred = map2(fit, data, \(x, y) predict_hourly(model = x, df = y))) %>%
   unnest(c(data, .pred)) %>%
-  select(datetime, target, .pred)
+  select(datetime, is_business, target, .pred)
 
 prevision %>%
   arrange(datetime) %>%
@@ -226,8 +159,15 @@ prevision %>%
     cols = c("target", "prev")
   ) %>%
   # filter(datetime >= ymd("2023-02-01"), datetime <= ymd("2023-02-28")) %>%
-  draw_target_vs_prev()
+  draw_target_vs_prev() +
+  facet_grid(cols = vars(is_business))
 
 ### Metrics ###
-get_baseline(yardstick::mape, test_pred_class = my_df)
-get_baseline(yardstick::rmse, test_pred_class = my_df)
+get_baseline(
+  yardstick::mape,
+  test_pred_class = filter(prevision, hour == my_hour)
+)
+get_baseline(
+  yardstick::rmse,
+  test_pred_class = filter(prevision, hour == my_hour)
+)
