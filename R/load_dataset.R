@@ -2,7 +2,11 @@
 
 here::i_am("R/load_dataset.R")
 
-CLIENT <- read_delim(here::here("data", "client.csv"))
+CLIENT <- read_delim(here::here("data", "client.csv")) %>%
+  mutate(
+    across(all_of(c("product_type", "county", "is_business")),
+    ~ as.factor(.))
+  )
 TRAIN <- read_delim(here::here("data", "train.csv"))
 GAS_PRICES <- read_delim(here::here("data", "gas_prices.csv"))
 ELECTRICITY_PRICES <- read_delim(here::here("data", "electricity_prices.csv"))

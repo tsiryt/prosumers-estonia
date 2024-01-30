@@ -5,55 +5,12 @@ if (!exists("history_weather_county")){
 }
 
 ntree <- 400
-# splitting train & test sets
-datetime_split <<- ymd_hms("2023-01-24 00:00:00")
-
-history_weather_avg <<- history_weather_county %>%
-  group_by(datetime) %>%
-  summarise(across(everything(), ~ mean(., na.rm = TRUE))) %>%
-  select(-county)
-train_weather <- TRAIN %>%
-  filter(
-    !prediction_unit_id %in% id_missing_values_in_train,
-    datetime <= datetime_split
-  ) %>%
-  group_by(is_consumption, prediction_unit_id) %>%
-  mutate(
-    # interpolate NAs at daylight saving time
-    target = na.approx(target),
-    is_consumption = as.factor(is_consumption),
-    is_business = as.factor(is_business),
-    product_type = as.factor(product_type),
-    hour = hour(datetime)
-  ) %>%
-  ungroup() %>%
-  group_by(datetime, is_consumption, is_business) %>%
-  summarise(across(where(is.numeric), ~ mean(., na.rm = TRUE))) %>%
-  inner_join(
-    history_weather_avg,
-    by = c("datetime"),
-    multiple = "all"
-  ) %>%
-  ungroup() %>%
-  select(
-    -starts_with("data_block"),
-    -row_id,
-    -prediction_unit_id,
-    # -datetime,
-    -county
-  )
-
-train_weather_prod <- train_weather %>%
-  filter(is_consumption == 0)
-train_weather_cons <- train_weather %>%
-  filter(is_consumption == 1)
-
 
 set.seed(4543)
 tic("random forest fitting : consumption")
 rf_fit_cons <- randomForest(
   target ~ .,
-  data = train_weather_cons,
+  data = train_features_cons,
   ntree = ntree,
   keep.forest = TRUE,
   importance = TRUE
@@ -63,7 +20,7 @@ toc()
 tic("random forest fitting : production")
 rf_fit_prod <- randomForest(
   target ~ .,
-  data = train_weather_prod,
+  data = train_features_prod,
   ntree = ntree,
   keep.forest = TRUE,
   importance = TRUE
@@ -99,3 +56,27 @@ partialPlot(rf_fit_cons, df_train, surface_pressure)
 
 # prod : shortwave_radiation, direct_solar_radiation, diffuse_radiation, dewpoint, cloudcover_total, surface_pressure, temperature
 # cons : temperature, surface_pressure, shortwave_radiation, direct_solar_radiation, diffuse_radiation, dewpoint, cloudcover_low, cloudcover_total
+
+### Lagged values ###
+train_features %>%
+  mutate(date = as_date(datetime)) %>%
+  filter(is_consumption == 1) %>%
+  group_by(date) %>%
+  summarise(target = sum(target)) %>%
+  mutate(
+    target_1 = lag(target, 1),
+    target_2 = lag(target, 2),
+    target_3 = lag(target, 3),
+    target_4 = lag(target, 4),
+    target_5 = lag(target, 5),
+    target_6 = lag(target, 6),
+    target_7 = lag(target, 7),
+    target_8 = lag(target, 8),
+    target_9 = lag(target, 9)
+  ) %>%
+  filter(date >= ymd("2021-09-10")) %>%
+  select(-date) %>%
+  cor() %>%
+  corrplot()
+
+# we take the value 7 days prior
