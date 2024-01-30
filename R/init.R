@@ -85,8 +85,6 @@ train_weather_cons <- train_weather %>%
   filter(is_consumption == 1)
 
 
-features_sum <- c("target")
-
 all_features <- TRAIN %>%
   filter(
     !prediction_unit_id %in% id_missing_values_in_train
@@ -100,6 +98,7 @@ all_features <- TRAIN %>%
     is_business = as.factor(is_business),
     hour = hour(datetime),
     day_of_week = as.factor(wday(datetime)),
+    is_weekend = as.factor(if_else(day_of_week %in% c(1, 7), 1, 0)),
     is_winter = as.factor(if_else(month(datetime) %in% 3:10, 0, 1)),
     date = as_date(datetime)
   ) %>%
@@ -113,6 +112,8 @@ all_features <- TRAIN %>%
     is_consumption,
     is_business,
     is_winter,
+    is_weekend,
+    product_type,
     day_of_week
   ) %>%
   summarise(
@@ -121,7 +122,7 @@ all_features <- TRAIN %>%
     installed_capacity = max(installed_capacity)
   ) %>%
   ungroup() %>%
-  group_by(hour, is_consumption, is_business) %>%
+  group_by(hour, is_consumption, is_business, product_type) %>%
   mutate(target_lag_7 = dplyr::lag(target, 7)) %>%
   ungroup() %>%
   filter(datetime >= start_date + days(7)) %>%
