@@ -4,7 +4,7 @@ here::i_am("R/load_dataset.R")
 
 CLIENT <- read_delim(here::here("data", "client.csv")) %>%
   mutate(
-    across(all_of(c("product_type", "county", "is_business")),
+    across(all_of(c("product_type", "is_business")),
     ~ as.factor(.))
   )
 TRAIN <- read_delim(here::here("data", "train.csv"))
