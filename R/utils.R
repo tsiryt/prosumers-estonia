@@ -10,20 +10,14 @@ process_TRAIN <- function(){
   TRAIN$weekday <- weekdays(TRAIN$datetime)
 }
 
-split_TRAIN <- function(){
+split_train_test <- function(df){
   #train test split
-  split<- initial_split(TRAIN,prop=0.8)
-  train<-training(split)
-  test<-testing(split)
-
-  train <- train %>% 
-    select(where(is.numeric)) %>%
-    filter(!prediction_unit_id %in% id_missing_values_in_train)
+  split <- initial_split(df, prop = 0.8)
+  train <- training(split)
+  test <- testing(split)
 
   train <- train[complete.cases(train), ]
 
-  test <- test %>% 
-    select(where(is.numeric))
   # store result in a named list
   numeric_split <- list(train, test)
   names(numeric_split) <- c("train", "test")
@@ -31,19 +25,27 @@ split_TRAIN <- function(){
   return(numeric_split)
 }
 
+## TODO ## : add model params as this function's params
 get_model_workflow <- function(numeric_split){
   #data processing : remove variables that contain only a single value
   rec <- recipe(target ~ ., data = numeric_split$train) %>%
     step_zv()
 
   # model default 15 trees
-  rule <- boost_tree(learn_rate = 0.01, tree_depth = 1000, trees = 15, stop_iter = 3) %>%
+  rule <-
+    boost_tree(
+      learn_rate = 0.01,
+      tree_depth = 1000,
+      trees = 15,
+      stop_iter = 3
+    ) %>%
     set_engine("xgboost") %>%
     set_mode("regression")
 
   # ML workflow
-  wf <- workflow() %>% 
-    add_model(rule) %>% 
+  wf <- 
+    workflow() %>%
+    add_model(rule) %>%
     add_recipe(rec)
 
   return(wf)
