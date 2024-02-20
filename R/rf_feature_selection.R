@@ -58,7 +58,55 @@ partialPlot(rf_fit_cons, df_train, surface_pressure)
 # cons : temperature, surface_pressure, shortwave_radiation, direct_solar_radiation, diffuse_radiation, dewpoint, cloudcover_low, cloudcover_total
 
 ### Lagged values ###
-train_features %>%
+TRAIN %>%
+  filter(
+    !prediction_unit_id %in% id_missing_values_in_train
+  ) %>%
+  mutate(
+    # interpolate NAs at daylight saving time
+    target = na.approx(target),
+    is_consumption = as.factor(is_consumption),
+    # county = as.factor(county),
+    product_type = as.factor(product_type),
+    is_business = as.factor(is_business),
+    hour = hour(datetime),
+    day_of_week = as.factor(wday(datetime)),
+    is_winter = as.factor(if_else(month(datetime) %in% 3:10, 0, 1)),
+    date = as_date(datetime)
+  ) %>%
+  inner_join(
+    CLIENT,
+    by = c("date", "product_type", "county", "is_business")
+  ) %>%
+  group_by(
+    datetime,
+    hour,
+    is_consumption,
+    is_business,
+    is_winter,
+    day_of_week
+  ) %>%
+  summarise(
+    target = sum(target, na.rm = TRUE),
+    eic_count = max(eic_count),
+    installed_capacity = max(installed_capacity)
+  ) %>%
+  ungroup() %>%
+  inner_join(
+    history_weather_avg,
+    by = c("datetime"),
+    multiple = "all"
+  ) %>%
+  inner_join(
+    ELECTRICITY_PRICES,
+    by = c("datetime" = "forecast_date"),
+    multiple = "all"
+  ) %>%
+  ungroup() %>%
+  select(
+    -starts_with("data_block"),
+    -origin_date
+  ) %>%
   mutate(date = as_date(datetime)) %>%
   filter(is_consumption == 1) %>%
   group_by(date) %>%
