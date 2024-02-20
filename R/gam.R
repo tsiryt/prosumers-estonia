@@ -6,9 +6,6 @@ if (!exists("history_weather_county")){
   source(here::here("R", "init.R"))
 }
 
-# inspect one model in particular
-my_hour <- 12
-
 spec <-
   gen_additive_mod(select_features = FALSE) %>%
   set_engine(
@@ -114,76 +111,38 @@ tic("Fitting GAM models by hour")
 fit_cons <- train_features_cons %>%
   group_by(hour, product_type, is_business) %>%
   nest() %>%
-  mutate(fit = map(data, \(data) fit_hourly(data, workflow = wf))) %>%
+  mutate(fit = map(data, \(data) fit_nested(data, workflow = wf))) %>%
   select(hour, fit)
 toc()
 
-tic("Fitting GAM models by hour, target normalized by installed_capacity")
+tic("Fitting GAM models by hour, target normalized by eic_count")
 fit_cons <- train_features_cons %>%
   group_by(hour, product_type, is_business) %>%
   nest() %>%
-  mutate(fit = map(data, \(data) fit_hourly(data, workflow = wf_norm))) %>%
+  mutate(fit = map(data, \(data) fit_nested(data, wf = wf_norm))) %>%
   select(hour, fit)
 toc()
 
+# inspect one model in particular
+my_hour <- 12
 model <- fit_cons %>%
   filter(hour == my_hour, product_type == 1, is_business == 0) %>%
-  pull(fit)
+  pull(fit) %>%
+  extract2(1) %>%
+  extract_fit_parsnip() %>%
+  extract_fit_engine()
 
 # model summary
-model[[1]] %>%
-  extract_fit_engine() %>%
-  summary()
+summary(model)
 
 # plot model
-model[[1]] %>%
-  extract_fit_engine() %>%
-  plot(residuals = TRUE, shade = TRUE, pch = 1, cex = 1)
+plot(model, residuals = TRUE, shade = TRUE, pch = 1, cex = 1)
 
 # concurvity
-model[[1]] %>%
-  extract_fit_engine() %>%
-  concurvity()
+concurvity(model)
 
 # check residuals
-model[[1]] %>%
-  extract_fit_engine() %>%
-  gam.check()
-
-
-train_features_cons %>%
-  filter(hour == my_hour) %>%
-  ggplot(aes(x = eic_count, y = target)) +
-  geom_point() +
-  facet_grid(cols = vars(is_business))
-
-train_features_cons %>%
-  mutate(weird = if_else(target <= 55, "weird", "normal")) %>%
-  filter(hour == my_hour, is_business == 0) %>%
-  select(datetime, target, weird) %>%
-  ggplot(aes(x = datetime, y = target)) +
-  geom_point(aes(col = weird)) +
-  scale_x_datetime(date_breaks = "1 month", date_labels = "%b %d")
-
-# weird line : plotting response VS fitted (when using identity as link)
-model[[1]] %>%
-  extract_fit_engine() %>%
-  augment() %>%
-  ggplot(aes(x = .fitted, y = target)) +
-  geom_point(aes(color = is_winter))
-
-model[[1]] %>%
-  extract_fit_engine() %>%
-  augment()
-  
-train_weather_price_cons %>%
-  filter(hour == 12) %>%
-  select(datetime, target, is_business, euros_per_mwh) %>%
-  pivot_longer(names_to = "feature", values_to = "value", cols = c("target", "euros_per_mwh")) %>%
-  ggplot(aes(x = datetime, y = value)) +
-  geom_line(aes(col = feature)) +
-  facet_grid(cols = vars(is_business))
-
+gam.check(model)
 
 ### PREDICT ### -------------
 predictors <- gam_predictors_norm
@@ -204,7 +163,7 @@ test <- test_features %>%
 
 prevision <- test %>%
   inner_join(fit_cons, by = c("hour", "product_type", "is_business")) %>%
-  mutate(.pred = map2(fit, data, \(x, y) predict_hourly(model = x, df = y))) %>%
+  mutate(.pred = map2(fit, data, \(x, y) predict_nested(model = x, df = y))) %>%
   unnest(c(data, .pred)) %>%
   select(
     datetime,

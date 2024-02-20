@@ -55,30 +55,28 @@ get_baseline <- function(metric, test_pred_class){
   return(info_baseline)
 }
 
-#' Fit a model on nested data. Call with purrr::map
+#' Fit a workflow on nested data. Call with purrr::map
 #'
-#' @param df A dataframe, or something coercible to one.
-#' @returns A parsnip model fit.
+#' @param df A nested dataframe, or something coercible to one.
+#' @returns A workflow model.
 #' @examples
 #' source(here::here("R", "init.R"))
 #' fit_cons <- train_features_cons %>%
 #'   group_by(hour) %>%
 #'   nest() %>%
-#'   mutate(fit = map(data, fit_hourly)) %>%
+#'   mutate(fit = map(data, \(data) fit_nested(data, workflow = wf_norm))) %>%
 #'   select(hour, fit)
-fit_hourly <- function(df) {
-  #fit workflow on train data
+fit_nested <- function(df, wf) {
   fit_wf <-
     wf %>%
-    fit(data = df) %>%
-    extract_fit_parsnip()
+    fit(data = df)
 
   return(fit_wf)
 }
 
 #' predict using nested data. Call with purrr::map
 #'
-#' @param model A parsnip model fit.
+#' @param model A workflow model fit.
 #' @param df A dataframe, or something coercible to one.
 #' @returns A vector of predictions.
 #' @examples
@@ -91,10 +89,10 @@ fit_hourly <- function(df) {
 #' 
 #' prevision <- test %>%
 #'   inner_join(fit_cons, by = "hour") %>%
-#'   mutate(.pred = map2(fit, data, \(x, y) predict_hourly(model = x, df = y))) %>%
+#'   mutate(.pred = map2(fit, data, \(x, y) predict_nested(model = x, df = y))) %>%
 #'   unnest(c(data, .pred)) %>%
 #'   select(datetime, is_business, product_type, target, .pred)
-predict_hourly <- function(model, df) {
+predict_nested <- function(model, df) {
   prev <- augment(model, df)
   return(prev$.pred)
 }

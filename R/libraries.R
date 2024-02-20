@@ -1,3 +1,4 @@
+library(magrittr)
 library(data.table)
 library(dplyr)
 library(tidyr)
