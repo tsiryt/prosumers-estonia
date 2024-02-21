@@ -42,7 +42,9 @@ classic_predictors <- c(
 )
 nesting_variables <- c("product_type", "is_business")
 predictors_nested_model <- setdiff(classic_predictors, nesting_variables)
-predictors <- predictors_nested_model
+
+# classic_predictors OR predictors_nested_model
+predictors <- classic_predictors
 rec <- numeric_split$train %>%
   select(target, all_of(predictors)) %>%
   recipe() %>%
@@ -94,6 +96,7 @@ prevision <- numeric_split$test %>%
   augment(fit, .)
 
 get_baseline(yardstick::mae, prevision)
+get_baseline(yardstick::mape, prevision)
 get_baseline(yardstick::rmse, prevision)
 
 # Nested

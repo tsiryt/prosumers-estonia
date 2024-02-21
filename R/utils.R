@@ -10,9 +10,9 @@ process_TRAIN <- function(){
   TRAIN$weekday <- weekdays(TRAIN$datetime)
 }
 
-split_train_test <- function(df){
+split_train_test <- function(df, prop = 0.8){
   #train test split
-  split <- initial_split(df, prop = 0.8)
+  split <- initial_split(df, prop = prop)
   train <- training(split)
   test <- testing(split)
 
