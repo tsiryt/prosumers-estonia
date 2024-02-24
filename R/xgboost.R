@@ -44,6 +44,7 @@ nesting_variables <- c("product_type", "is_business")
 predictors_nested_model <- setdiff(classic_predictors, nesting_variables)
 
 # classic_predictors OR predictors_nested_model
+engine <- "lightgbm"
 predictors <- classic_predictors
 rec <- numeric_split$train %>%
   select(target, all_of(predictors)) %>%
@@ -54,21 +55,107 @@ rec <- numeric_split$train %>%
   step_dummy(all_nominal())
 model_spec <-
   boost_tree(
-    learn_rate = 0.1,
+    learn_rate = tune(),
+    tree_depth = 15,
+    trees = 5000,
+    # xgboost gamma
+    loss_reduction = NULL,
+    stop_iter = 3
+  ) %>%
+  set_engine(engine) %>%
+  set_mode("regression")
+
+### TUNING ###
+
+## Learning rate
+# Tuning learning rate with 10-fold CV took 50mn
+# Grid search
+lr_grid <- grid_regular(learn_rate(), levels = 5)
+model_spec_lr <-
+  boost_tree(
+    learn_rate = tune(),
     tree_depth = 15,
     trees = 5000,
     stop_iter = 3
   ) %>%
-  set_engine("xgboost") %>%
+  set_engine(engine) %>%
   set_mode("regression")
+train_folds <- numeric_split$train %>%
+  vfold_cv(v = 5) %>%
+  withr::with_seed(234, .)
 
-wf_xgb <- workflow() %>%
-  add_model(model_spec) %>%
+wf_xgb_lr <- workflow() %>%
+  add_model(model_spec_lr) %>%
   add_recipe(rec)
+
+tic(glue("Tuning learn rate using {engine}"))
+lr_res <-
+  wf_xgb_lr %>%
+  tune_grid(
+    resamples = train_folds,
+    grid = lr_grid,
+    metrics = metric_set(rmse, mae, mape)
+)
+toc()
+
+lr_res %>%
+  collect_metrics() %>%
+  ggplot(aes(x = learn_rate, y = mean)) +
+  geom_line() +
+  facet_wrap(~ .metric, scales = "free")
+# best was learn_rate = 0.1
+best_learn_rate <- select_best(lr_res, "mae")
+
+wf_lr_tuned <-
+  wf_xgb_lr %>%
+  finalize_workflow(best_learn_rate)
+
+# Tree hyperparams
+tree_grid <- grid_regular(min_n(), tree_depth(), levels = 3)
+model_spec_tree <-
+  boost_tree(
+    learn_rate = 0.1,
+    tree_depth = tune(),
+    min_n = tune(),
+    trees = 5000,
+    stop_iter = 3
+  ) %>%
+  set_engine(engine) %>%
+  set_mode("regression")
+train_folds <- numeric_split$train %>%
+  vfold_cv(v = 5) %>%
+  withr::with_seed(61, .)
+
+wf_xgb_tree <- workflow() %>%
+  add_model(model_spec_tree) %>%
+  add_recipe(rec)
+
+# Tuning took 30 mins with 5-fold cv and 9 grid combos
+tic(glue("Tuning tree params using {engine}"))
+tree_res <-
+  wf_xgb_tree %>%
+  tune_grid(
+    resamples = train_folds,
+    grid = tree_grid,
+    metrics = metric_set(rmse, mae)
+)
+toc()
+
+tree_res %>%
+  collect_metrics() %>%
+  mutate(min_n = as.factor(min_n)) %>%
+  ggplot(aes(x = tree_depth, y = mean)) +
+  geom_point(size = 2, aes(col = min_n)) +
+  facet_wrap(~ .metric, scales = "free")
+# best was min_n = 40, tree_depth = 15
+best_tree <- select_best(tree_res, "rmse")
+
+wf_xgb <-
+  wf_xgb_tree %>%
+  finalize_workflow(best_tree)
 
 ### MODELING ###
 ## Focusing on consumption
-
 # Classical
 tic("Fitting XGBoost model")
 fit <- numeric_split$train %>%
@@ -115,9 +202,12 @@ prevision <- numeric_split$test %>%
   select(datetime, all_of(nesting_variables), target, .pred)
 
 get_baseline(yardstick::mae, ungroup(prevision))
+get_baseline(yardstick::mape, ungroup(prevision))
 get_baseline(yardstick::rmse, ungroup(prevision))
 
 
-# results for default 15 trees
-# 1 mae     standard        250.
-# 1 rmse    standard        830.
+# results for not normalised, default hyperparams
+# mae unnested 167
+# rmse unnested 412
+
+# after tuning,, mape for nested is far better than unnested (6,57 vs 19.2)
